@@ -1,0 +1,119 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestDefaultPaths(t *testing.T) {
+	paths, err := DefaultPaths()
+	if err != nil {
+		t.Fatalf("DefaultPaths() failed: %v", err)
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("UserHomeDir() failed: %v", err)
+	}
+
+	expected := filepath.Join(home, ".multiclaude")
+	if paths.Root != expected {
+		t.Errorf("Root = %q, want %q", paths.Root, expected)
+	}
+
+	// Test that all paths are under the root
+	if !filepath.HasPrefix(paths.DaemonPID, paths.Root) {
+		t.Errorf("DaemonPID not under Root: %s", paths.DaemonPID)
+	}
+	if !filepath.HasPrefix(paths.DaemonSock, paths.Root) {
+		t.Errorf("DaemonSock not under Root: %s", paths.DaemonSock)
+	}
+	if !filepath.HasPrefix(paths.DaemonLog, paths.Root) {
+		t.Errorf("DaemonLog not under Root: %s", paths.DaemonLog)
+	}
+	if !filepath.HasPrefix(paths.StateFile, paths.Root) {
+		t.Errorf("StateFile not under Root: %s", paths.StateFile)
+	}
+	if !filepath.HasPrefix(paths.ReposDir, paths.Root) {
+		t.Errorf("ReposDir not under Root: %s", paths.ReposDir)
+	}
+	if !filepath.HasPrefix(paths.WorktreesDir, paths.Root) {
+		t.Errorf("WorktreesDir not under Root: %s", paths.WorktreesDir)
+	}
+	if !filepath.HasPrefix(paths.MessagesDir, paths.Root) {
+		t.Errorf("MessagesDir not under Root: %s", paths.MessagesDir)
+	}
+}
+
+func TestEnsureDirectories(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	paths := &Paths{
+		Root:         filepath.Join(tmpDir, "test-multiclaude"),
+		ReposDir:     filepath.Join(tmpDir, "test-multiclaude", "repos"),
+		WorktreesDir: filepath.Join(tmpDir, "test-multiclaude", "wts"),
+		MessagesDir:  filepath.Join(tmpDir, "test-multiclaude", "messages"),
+	}
+
+	if err := paths.EnsureDirectories(); err != nil {
+		t.Fatalf("EnsureDirectories() failed: %v", err)
+	}
+
+	// Verify directories were created
+	dirs := []string{paths.Root, paths.ReposDir, paths.WorktreesDir, paths.MessagesDir}
+	for _, dir := range dirs {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			t.Errorf("Directory not created: %s", dir)
+		}
+	}
+
+	// Test idempotency - should not fail if called again
+	if err := paths.EnsureDirectories(); err != nil {
+		t.Errorf("EnsureDirectories() second call failed: %v", err)
+	}
+}
+
+func TestRepoPaths(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	paths := &Paths{
+		Root:         tmpDir,
+		ReposDir:     filepath.Join(tmpDir, "repos"),
+		WorktreesDir: filepath.Join(tmpDir, "wts"),
+		MessagesDir:  filepath.Join(tmpDir, "messages"),
+	}
+
+	repoName := "test-repo"
+
+	repoDir := paths.RepoDir(repoName)
+	expected := filepath.Join(tmpDir, "repos", repoName)
+	if repoDir != expected {
+		t.Errorf("RepoDir() = %q, want %q", repoDir, expected)
+	}
+
+	wtDir := paths.WorktreeDir(repoName)
+	expected = filepath.Join(tmpDir, "wts", repoName)
+	if wtDir != expected {
+		t.Errorf("WorktreeDir() = %q, want %q", wtDir, expected)
+	}
+
+	agentName := "supervisor"
+	agentWT := paths.AgentWorktree(repoName, agentName)
+	expected = filepath.Join(tmpDir, "wts", repoName, agentName)
+	if agentWT != expected {
+		t.Errorf("AgentWorktree() = %q, want %q", agentWT, expected)
+	}
+
+	repoMsgDir := paths.RepoMessagesDir(repoName)
+	expected = filepath.Join(tmpDir, "messages", repoName)
+	if repoMsgDir != expected {
+		t.Errorf("RepoMessagesDir() = %q, want %q", repoMsgDir, expected)
+	}
+
+	agentMsgDir := paths.AgentMessagesDir(repoName, agentName)
+	expected = filepath.Join(tmpDir, "messages", repoName, agentName)
+	if agentMsgDir != expected {
+		t.Errorf("AgentMessagesDir() = %q, want %q", agentMsgDir, expected)
+	}
+}
