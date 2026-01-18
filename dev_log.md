@@ -35,6 +35,18 @@
 - `internal/logging` - Structured logging to files
 - `internal/cli` - Command routing framework (placeholder implementations)
 
+**Commits:**
+1. a5a4b43 - Add development log for tracking Phase 1 progress
+2. e399ff4 - Add config package for path management
+3. 94fef7e - Add daemon PID file management
+4. e05ff0c - Add state management with JSON persistence
+5. a80e8ed - Add tmux library for session management
+6. 0479613 - Add worktree library for git worktree operations
+7. a942fc7 - Add message filesystem operations
+8. 6d79399 - Add socket communication and logging infrastructure
+9. 69f2b5b - Add CLI framework with command routing
+10. 10fffe5 - Add .gitignore for Go project
+
 **Next Steps:**
 - Write unit tests for all libraries
 - Implement daemon core (health checks, nudge loops, message routing)
