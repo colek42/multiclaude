@@ -1470,6 +1470,20 @@ func (c *CLI) createWorker(args []string) error {
 	// Get tmux session name (it's mc-<reponame>)
 	tmuxSession := fmt.Sprintf("mc-%s", repoName)
 
+	// Ensure tmux session exists before creating window
+	// This handles cases where the session was killed or daemon didn't restore it
+	tmuxClient := tmux.NewClient()
+	hasSession, err := tmuxClient.HasSession(tmuxSession)
+	if err != nil {
+		return errors.TmuxOperationFailed("check session", err)
+	}
+	if !hasSession {
+		fmt.Printf("Tmux session '%s' not found, creating it...\n", tmuxSession)
+		if err := tmuxClient.CreateSession(tmuxSession, true); err != nil {
+			return errors.TmuxOperationFailed("create session", err)
+		}
+	}
+
 	// Create tmux window for worker (detached so it doesn't switch focus)
 	fmt.Printf("Creating tmux window: %s\n", workerName)
 	cmd := exec.Command("tmux", "new-window", "-d", "-t", tmuxSession, "-n", workerName, "-c", wtPath)
