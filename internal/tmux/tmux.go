@@ -141,21 +141,19 @@ func (c *Client) SendEnter(session, windowName string) error {
 	return nil
 }
 
-// SendKeysLiteralWithEnter sends text + Enter atomically in a single exec call.
+// SendKeysLiteralWithEnter sends text + Enter atomically using shell command chaining.
 // This prevents race conditions where Enter might be lost between separate exec calls.
-// Uses tmux command chaining (set-buffer ; paste-buffer ; send-keys) to ensure
-// the entire message and Enter are delivered atomically in a single exec.
+// Uses sh -c with && to chain tmux commands in a single shell execution.
 // This approach works reliably for both single-line and multiline messages.
 func (c *Client) SendKeysLiteralWithEnter(session, windowName, text string) error {
 	target := fmt.Sprintf("%s:%s", session, windowName)
 
-	// Use set-buffer + paste-buffer + send-keys Enter for all messages
-	// This is the most reliable approach as it handles all special characters
-	// and ensures atomic delivery of text + Enter in a single exec call
-	cmd := exec.Command("tmux",
-		"set-buffer", text, ";",
-		"paste-buffer", "-t", target, ";",
-		"send-keys", "-t", target, "C-m")
+	// Use sh -c to chain tmux commands atomically with &&
+	// The text is passed as $1 to avoid shell escaping issues with special characters
+	// Commands: set-buffer (load text) -> paste-buffer (insert to pane) -> send-keys Enter (submit)
+	cmdStr := fmt.Sprintf("tmux set-buffer -- \"$1\" && tmux paste-buffer -t %s && tmux send-keys -t %s Enter",
+		target, target)
+	cmd := exec.Command("sh", "-c", cmdStr, "sh", text)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to send keys atomically: %w", err)
 	}
