@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,41 @@ import (
 
 // Version is the current version of multiclaude (set at build time via ldflags)
 var Version = "dev"
+
+// GetVersion returns the semver-formatted version string
+func GetVersion() string {
+	if Version != "dev" {
+		return Version
+	}
+
+	// Try to get VCS info embedded by Go at build time
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "0.0.0-dev"
+	}
+
+	var commit string
+	for _, setting := range info.Settings {
+		if setting.Key == "vcs.revision" {
+			commit = setting.Value
+			if len(commit) > 7 {
+				commit = commit[:7] // Short commit hash
+			}
+			break
+		}
+	}
+
+	if commit == "" {
+		return "0.0.0-dev"
+	}
+
+	return fmt.Sprintf("0.0.0+%s-dev", commit)
+}
+
+// IsDevVersion returns true if running a development build (not set via ldflags)
+func IsDevVersion() bool {
+	return Version == "dev"
+}
 
 // Command represents a CLI command
 type Command struct {
@@ -146,7 +182,29 @@ func (c *CLI) Execute(args []string) error {
 
 // showVersion displays the version information
 func (c *CLI) showVersion() error {
-	fmt.Printf("multiclaude %s\n", Version)
+	fmt.Printf("multiclaude %s\n", GetVersion())
+	return nil
+}
+
+// versionCommand displays version information with optional JSON output
+func (c *CLI) versionCommand(args []string) error {
+	flags, _ := ParseFlags(args)
+	outputJSON := flags["json"] == "true"
+
+	version := GetVersion()
+
+	if outputJSON {
+		output := map[string]interface{}{
+			"version":    version,
+			"isDev":      IsDevVersion(),
+			"rawVersion": Version,
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(output)
+	}
+
+	fmt.Printf("multiclaude %s\n", version)
 	return nil
 }
 
@@ -555,10 +613,8 @@ func (c *CLI) registerCommands() {
 	c.rootCmd.Subcommands["version"] = &Command{
 		Name:        "version",
 		Description: "Show version information",
-		Usage:       "multiclaude version",
-		Run: func(args []string) error {
-			return c.showVersion()
-		},
+		Usage:       "multiclaude version [--json]",
+		Run:         c.versionCommand,
 	}
 }
 
