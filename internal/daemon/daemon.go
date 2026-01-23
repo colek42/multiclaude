@@ -308,8 +308,8 @@ func (d *Daemon) checkAgentHealth() {
 				if !isProcessAlive(agent.PID) {
 					d.logger.Warn("Agent %s process (PID %d) not running", agentName, agent.PID)
 
-					// For persistent agents (supervisor, merge-queue, workspace, generic-persistent), attempt auto-restart
-					if agent.Type == state.AgentTypeSupervisor || agent.Type == state.AgentTypeMergeQueue || agent.Type == state.AgentTypeWorkspace || agent.Type == state.AgentTypeGenericPersistent {
+					// For persistent agents, attempt auto-restart
+					if agent.Type.IsPersistent() {
 						d.logger.Info("Attempting to auto-restart agent %s", agentName)
 						if err := d.restartAgent(repoName, agentName, agent, repo); err != nil {
 							d.logger.Error("Failed to restart agent %s: %v", agentName, err)

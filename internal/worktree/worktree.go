@@ -18,6 +18,24 @@ func NewManager(repoPath string) *Manager {
 	return &Manager{repoPath: repoPath}
 }
 
+// resolvePathWithSymlinks resolves a path to its absolute form and evaluates symlinks.
+// This is important on macOS where /var is a symlink to /private/var.
+// If symlink resolution fails (e.g., path doesn't exist), returns the absolute path.
+func resolvePathWithSymlinks(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+
+	evalPath, err := filepath.EvalSymlinks(absPath)
+	if err != nil {
+		// Path might not exist yet or symlink resolution failed, use absPath
+		return absPath, nil
+	}
+
+	return evalPath, nil
+}
+
 // Create creates a new git worktree
 func (m *Manager) Create(path, branch string) error {
 	cmd := exec.Command("git", "worktree", "add", path, branch)
@@ -72,25 +90,15 @@ func (m *Manager) Exists(path string) (bool, error) {
 		return false, err
 	}
 
-	absPath, err := filepath.Abs(path)
+	evalPath, err := resolvePathWithSymlinks(path)
 	if err != nil {
 		return false, err
 	}
-	// Resolve symlinks for accurate comparison (important on macOS)
-	evalPath, err := filepath.EvalSymlinks(absPath)
-	if err != nil {
-		// Path might not exist yet, use absPath
-		evalPath = absPath
-	}
 
 	for _, wt := range worktrees {
-		wtAbs, err := filepath.Abs(wt.Path)
+		wtEval, err := resolvePathWithSymlinks(wt.Path)
 		if err != nil {
 			continue
-		}
-		wtEval, err := filepath.EvalSymlinks(wtAbs)
-		if err != nil {
-			wtEval = wtAbs
 		}
 		if wtEval == evalPath {
 			return true, nil
@@ -576,14 +584,9 @@ func CleanupOrphanedWithDetails(wtRootDir string, manager *Manager) (*CleanupOrp
 
 	gitPaths := make(map[string]bool)
 	for _, wt := range gitWorktrees {
-		absPath, err := filepath.Abs(wt.Path)
+		evalPath, err := resolvePathWithSymlinks(wt.Path)
 		if err != nil {
 			continue
-		}
-		// Resolve symlinks for accurate comparison (important on macOS)
-		evalPath, err := filepath.EvalSymlinks(absPath)
-		if err != nil {
-			evalPath = absPath
 		}
 		gitPaths[evalPath] = true
 	}
@@ -603,14 +606,9 @@ func CleanupOrphanedWithDetails(wtRootDir string, manager *Manager) (*CleanupOrp
 		}
 
 		path := filepath.Join(wtRootDir, entry.Name())
-		absPath, err := filepath.Abs(path)
+		evalPath, err := resolvePathWithSymlinks(path)
 		if err != nil {
 			continue
-		}
-		// Resolve symlinks for accurate comparison (important on macOS)
-		evalPath, err := filepath.EvalSymlinks(absPath)
-		if err != nil {
-			evalPath = absPath
 		}
 
 		if !gitPaths[evalPath] {
