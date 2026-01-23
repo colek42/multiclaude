@@ -983,9 +983,10 @@ func TestHealthCheckLoopWithRealTmux(t *testing.T) {
 	defer cleanup()
 
 	// Create a real tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-healthcheck"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -1190,9 +1191,10 @@ func TestWakeLoopUpdatesNudgeTime(t *testing.T) {
 	defer cleanup()
 
 	// Create a real tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-wake"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -1249,9 +1251,10 @@ func TestWakeLoopSkipsRecentlyNudgedAgents(t *testing.T) {
 	defer cleanup()
 
 	// Create a real tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-wake-skip"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -1897,9 +1900,10 @@ func TestRestoreTrackedReposExistingSession(t *testing.T) {
 	defer cleanup()
 
 	// Create a tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-restore-existing"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -1956,9 +1960,10 @@ func TestRestoreDeadAgentsWithExistingSession(t *testing.T) {
 	defer cleanup()
 
 	// Create a tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-restore-dead"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -2007,9 +2012,10 @@ func TestRestoreDeadAgentsSkipsAliveProcesses(t *testing.T) {
 	defer cleanup()
 
 	// Create a tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-restore-alive"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
@@ -2062,9 +2068,10 @@ func TestRestoreDeadAgentsSkipsTransientAgents(t *testing.T) {
 	defer cleanup()
 
 	// Create a tmux session
+	// Note: In CI environments, tmux may be installed but unable to create sessions (no TTY)
 	sessionName := "mc-test-restore-transient"
 	if err := tmuxClient.CreateSession(context.Background(), sessionName, true); err != nil {
-		t.Fatalf("Failed to create tmux session: %v", err)
+		t.Skipf("tmux cannot create sessions in this environment: %v", err)
 	}
 	defer tmuxClient.KillSession(context.Background(), sessionName)
 
