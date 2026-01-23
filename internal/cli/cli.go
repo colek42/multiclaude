@@ -560,6 +560,13 @@ func (c *CLI) registerCommands() {
 		Run:         c.restartAgentCmd,
 	}
 
+	agentCmd.Subcommands["attach"] = &Command{
+		Name:        "attach",
+		Description: "Attach to an agent's tmux window",
+		Usage:       "multiclaude agent attach <agent-name> [--read-only]",
+		Run:         c.attachAgent,
+	}
+
 	c.rootCmd.Subcommands["agent"] = agentCmd
 
 	// Message commands (new noun group for message operations)
@@ -600,13 +607,8 @@ func (c *CLI) registerCommands() {
 
 	c.rootCmd.Subcommands["message"] = messageCmd
 
-	// Attach command
-	c.rootCmd.Subcommands["attach"] = &Command{
-		Name:        "attach",
-		Description: "Attach to an agent",
-		Usage:       "multiclaude attach <agent-name> [--read-only]",
-		Run:         c.attachAgent,
-	}
+	// 'attach' is an alias for 'agent attach' (backward compatibility)
+	c.rootCmd.Subcommands["attach"] = agentCmd.Subcommands["attach"]
 
 	// Maintenance commands
 	c.rootCmd.Subcommands["cleanup"] = &Command{

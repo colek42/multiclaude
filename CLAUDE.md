@@ -236,7 +236,7 @@ When modifying daemon loops:
 
 ```bash
 # Attach to see what it's doing
-multiclaude attach <agent-name> --read-only
+multiclaude agent attach <agent-name> --read-only
 
 # Check its messages
 multiclaude message list  # (from agent's tmux window)

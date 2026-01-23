@@ -76,7 +76,7 @@ multiclaude daemon status
 **Manual recovery (if auto-restart fails):**
 ```bash
 # Check supervisor window
-multiclaude attach supervisor
+multiclaude agent attach supervisor
 
 # Use the multiclaude claude command to restart (auto-detects context)
 multiclaude claude
@@ -139,7 +139,7 @@ claude --resume <session-id> --dangerously-skip-permissions \
 **Manual recovery:**
 ```bash
 # Check worker status
-multiclaude attach <worker-name>
+multiclaude agent attach <worker-name>
 
 # Option 1: Continue the work manually
 cd ~/.multiclaude/wts/<repo>/<worker-name>
@@ -173,7 +173,7 @@ multiclaude worker rm <worker-name>
 **Recovery:**
 ```bash
 # Attach to the workspace window
-multiclaude attach workspace
+multiclaude agent attach workspace
 
 # Use multiclaude claude to restart (preserves session context)
 multiclaude claude

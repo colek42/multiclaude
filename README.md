@@ -171,7 +171,7 @@ multiclaude workspace <name>               # Connect to workspace (shorthand)
 - Workspaces use the branch naming convention `workspace/<name>`
 - Workspace names follow git branch naming rules (no spaces, special characters, etc.)
 - A "default" workspace is created automatically when you run `multiclaude repo init`
-- Use `multiclaude attach <workspace-name>` as an alternative to `workspace connect`
+- Use `multiclaude agent attach <workspace-name>` as an alternative to `workspace connect`
 
 ### Workers
 
@@ -190,9 +190,9 @@ The `--push-to` flag creates a worker that pushes to an existing branch instead 
 ### Observing
 
 ```bash
-multiclaude attach <agent-name>            # Attach to agent's tmux window
-multiclaude attach <agent-name> --read-only # Observe without interaction
-tmux attach -t mc-<repo>                   # Attach to entire repo session
+multiclaude agent attach <agent-name>            # Attach to agent's tmux window
+multiclaude agent attach <agent-name> --read-only # Observe without interaction
+tmux attach -t mc-<repo>                         # Attach to entire repo session
 ```
 
 ### Message Commands (inter-agent communication)
@@ -292,7 +292,7 @@ Your workspace is a persistent Claude session where you can spawn and manage wor
 │  │                                                                         ││
 │  │ Both workers are now running. You can check on them with:               ││
 │  │   multiclaude worker list                                               ││
-│  │   multiclaude attach swift-eagle                                        ││
+│  │   multiclaude agent attach swift-eagle                                  ││
 │  ╰─────────────────────────────────────────────────────────────────────────╯│
 │                                                                             │
 │  > Great, let me know when they finish. I'm going to grab lunch.            │
@@ -326,7 +326,7 @@ Later, when you return:
 The supervisor coordinates agents and provides status updates. Attach to watch it work:
 
 ```bash
-multiclaude attach supervisor --read-only
+multiclaude agent attach supervisor --read-only
 ```
 
 ```
@@ -361,7 +361,7 @@ multiclaude attach supervisor --read-only
 The merge queue monitors PRs and merges them when CI passes:
 
 ```bash
-multiclaude attach merge-queue --read-only
+multiclaude agent attach merge-queue --read-only
 ```
 
 ```

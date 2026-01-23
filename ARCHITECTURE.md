@@ -293,8 +293,8 @@ multiclaude
 │   ├── list-messages
 │   ├── read-message <id>
 │   ├── ack-message <id>
-│   └── complete
-├── attach <name>            # Attach to tmux window
+│   ├── complete
+│   └── attach <name>        # Attach to tmux window
 ├── cleanup [--dry-run]      # Clean orphaned resources
 ├── repair                   # Fix state
 └── daemon
