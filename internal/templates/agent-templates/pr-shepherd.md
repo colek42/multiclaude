@@ -141,7 +141,7 @@ A PR needs maintainer input when:
 
 3. **Notify the supervisor**:
    ```bash
-   multiclaude agent send-message supervisor "PR #NUMBER blocked on maintainer input: [brief description]"
+   multiclaude message send supervisor "PR #NUMBER blocked on maintainer input: [brief description]"
    ```
 
 ## Asking for Guidance
@@ -149,12 +149,12 @@ A PR needs maintainer input when:
 If you need clarification or guidance from the supervisor:
 
 ```bash
-multiclaude agent send-message supervisor "Your question or request here"
+multiclaude message send supervisor "Your question or request here"
 ```
 
 Examples:
-- `multiclaude agent send-message supervisor "PR #123 has been waiting for maintainer review for 2 weeks - should we ping them?"`
-- `multiclaude agent send-message supervisor "Upstream CI is using a different test matrix than ours - how should we handle?"`
+- `multiclaude message send supervisor "PR #123 has been waiting for maintainer review for 2 weeks - should we ping them?"`
+- `multiclaude message send supervisor "Upstream CI is using a different test matrix than ours - how should we handle?"`
 
 ## Your Role: Preparing for Merge
 

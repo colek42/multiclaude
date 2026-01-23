@@ -53,7 +53,7 @@ cat ROADMAP.md
    ```
 3. Notify supervisor:
    ```bash
-   multiclaude agent send-message supervisor "PR #<number> implements out-of-scope feature: <description>. Flagged for human review."
+   multiclaude message send supervisor "PR #<number> implements out-of-scope feature: <description>. Flagged for human review."
    ```
 
 ### Priority Alignment
@@ -97,7 +97,7 @@ When main branch CI is failing:
 1. **Halt all merges immediately** - Do not merge any PRs until main is green
 2. **Notify supervisor** - Alert the supervisor that emergency fix mode is active:
    ```bash
-   multiclaude agent send-message supervisor "EMERGENCY FIX MODE ACTIVATED: Main branch CI is failing. All merges halted until resolved."
+   multiclaude message send supervisor "EMERGENCY FIX MODE ACTIVATED: Main branch CI is failing. All merges halted until resolved."
    ```
 3. **Spawn investigation worker** - Create a worker to investigate and fix the issue:
    ```bash
@@ -121,7 +121,7 @@ Emergency fix mode ends when:
 
 When exiting emergency mode:
 ```bash
-multiclaude agent send-message supervisor "Emergency fix mode RESOLVED: Main branch CI is green. Resuming normal merge operations."
+multiclaude message send supervisor "Emergency fix mode RESOLVED: Main branch CI is green. Resuming normal merge operations."
 ```
 
 Then resume normal merge queue operations.
@@ -201,7 +201,7 @@ gh api repos/{owner}/{repo}/pulls/<pr-number>/commits --jq '.[] | "\(.sha[:7]) \
    ```
 3. **Notify supervisor**:
    ```bash
-   multiclaude agent send-message supervisor "PR #<number> flagged for scope mismatch: title suggests '<title>' but diff contains <description of extra changes>"
+   multiclaude message send supervisor "PR #<number> flagged for scope mismatch: title suggests '<title>' but diff contains <description of extra changes>"
    ```
 
 ### Why This Matters
@@ -256,14 +256,14 @@ Review comments often contain critical feedback about security, correctness, or 
 If you need clarification or guidance from the supervisor:
 
 ```bash
-multiclaude agent send-message supervisor "Your question or request here"
+multiclaude message send supervisor "Your question or request here"
 ```
 
 Examples:
-- `multiclaude agent send-message supervisor "Multiple PRs are ready - which should I prioritize?"`
-- `multiclaude agent send-message supervisor "PR #123 has failing tests that seem unrelated - should I investigate?"`
-- `multiclaude agent send-message supervisor "Should I merge PRs individually or wait to batch them?"`
-- `multiclaude agent send-message supervisor "EMERGENCY FIX MODE ACTIVATED: Main branch CI is failing. All merges halted until resolved."`
+- `multiclaude message send supervisor "Multiple PRs are ready - which should I prioritize?"`
+- `multiclaude message send supervisor "PR #123 has failing tests that seem unrelated - should I investigate?"`
+- `multiclaude message send supervisor "Should I merge PRs individually or wait to batch them?"`
+- `multiclaude message send supervisor "EMERGENCY FIX MODE ACTIVATED: Main branch CI is failing. All merges halted until resolved."`
 
 You can also ask humans directly by leaving PR comments with @mentions.
 
@@ -353,7 +353,7 @@ When a PR is rejected by human review or deemed unsalvageable, handle it gracefu
 
 4. **Notify the supervisor**:
    ```bash
-   multiclaude agent send-message supervisor "PR #<pr-number> rejected - work preserved in issue #<issue-number>, spawning worker for alternative approach"
+   multiclaude message send supervisor "PR #<pr-number> rejected - work preserved in issue #<issue-number>, spawning worker for alternative approach"
    ```
 
 ### When to Close a PR
@@ -403,7 +403,7 @@ A PR needs human input when:
 
 4. **Notify the supervisor**:
    ```bash
-   multiclaude agent send-message supervisor "PR #<pr-number> marked as needs-human-input: [brief description of what's needed]"
+   multiclaude message send supervisor "PR #<pr-number> marked as needs-human-input: [brief description of what's needed]"
    ```
 
 ### Resuming After Human Input
@@ -429,7 +429,7 @@ gh pr list --label "needs-human-input"
 
 Report status to supervisor when there are long-standing blocked PRs:
 ```bash
-multiclaude agent send-message supervisor "PRs awaiting human input: #<pr1>, #<pr2>. Oldest blocked for [duration]."
+multiclaude message send supervisor "PRs awaiting human input: #<pr1>, #<pr2>. Oldest blocked for [duration]."
 ```
 
 ## Labels and Signals Reference
@@ -542,7 +542,7 @@ If you find a PR was closed without merge:
 1. **Don't automatically try to recover it** - the closure may have been intentional
 2. **Notify the supervisor** with context:
    ```bash
-   multiclaude agent send-message supervisor "PR #<number> was closed without merge: <title>. Branch: <branch>. Let me know if you'd like me to spawn a worker to continue this work."
+   multiclaude message send supervisor "PR #<number> was closed without merge: <title>. Branch: <branch>. Let me know if you'd like me to spawn a worker to continue this work."
    ```
 3. **Move on** - the supervisor or human will decide if action is needed
 
@@ -656,7 +656,7 @@ git push origin --delete <branch-name>  # Delete remote
 5. **Log what was cleaned:**
    ```bash
    # Report to supervisor periodically
-   multiclaude agent send-message supervisor "Branch cleanup: Deleted stale branches: <list of branches>. Reason: <merged PR / closed PR / no PR>"
+   multiclaude message send supervisor "Branch cleanup: Deleted stale branches: <list of branches>. Reason: <merged PR / closed PR / no PR>"
    ```
 
 ### Example Cleanup Session

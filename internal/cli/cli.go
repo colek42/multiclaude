@@ -503,30 +503,32 @@ func (c *CLI) registerCommands() {
 		Subcommands: make(map[string]*Command),
 	}
 
+	// Legacy message commands (aliases for backward compatibility)
+	// Prefer: multiclaude message send/list/read/ack
 	agentCmd.Subcommands["send-message"] = &Command{
 		Name:        "send-message",
-		Description: "Send a message to another agent",
+		Description: "Send a message to another agent (alias for 'message send')",
 		Usage:       "multiclaude agent send-message <recipient> <message>",
 		Run:         c.sendMessage,
 	}
 
 	agentCmd.Subcommands["list-messages"] = &Command{
 		Name:        "list-messages",
-		Description: "List pending messages",
+		Description: "List pending messages (alias for 'message list')",
 		Usage:       "multiclaude agent list-messages",
 		Run:         c.listMessages,
 	}
 
 	agentCmd.Subcommands["read-message"] = &Command{
 		Name:        "read-message",
-		Description: "Read a specific message",
+		Description: "Read a specific message (alias for 'message read')",
 		Usage:       "multiclaude agent read-message <message-id>",
 		Run:         c.readMessage,
 	}
 
 	agentCmd.Subcommands["ack-message"] = &Command{
 		Name:        "ack-message",
-		Description: "Acknowledge a message",
+		Description: "Acknowledge a message (alias for 'message ack')",
 		Usage:       "multiclaude agent ack-message <message-id>",
 		Run:         c.ackMessage,
 	}
@@ -546,6 +548,44 @@ func (c *CLI) registerCommands() {
 	}
 
 	c.rootCmd.Subcommands["agent"] = agentCmd
+
+	// Message commands (new noun group for message operations)
+	// These are the preferred commands; agent *-message commands are kept as aliases
+	messageCmd := &Command{
+		Name:        "message",
+		Description: "Manage inter-agent messages",
+		Subcommands: make(map[string]*Command),
+	}
+
+	messageCmd.Subcommands["send"] = &Command{
+		Name:        "send",
+		Description: "Send a message to another agent",
+		Usage:       "multiclaude message send <recipient> <message>",
+		Run:         c.sendMessage,
+	}
+
+	messageCmd.Subcommands["list"] = &Command{
+		Name:        "list",
+		Description: "List pending messages",
+		Usage:       "multiclaude message list",
+		Run:         c.listMessages,
+	}
+
+	messageCmd.Subcommands["read"] = &Command{
+		Name:        "read",
+		Description: "Read a specific message",
+		Usage:       "multiclaude message read <message-id>",
+		Run:         c.readMessage,
+	}
+
+	messageCmd.Subcommands["ack"] = &Command{
+		Name:        "ack",
+		Description: "Acknowledge a message",
+		Usage:       "multiclaude message ack <message-id>",
+		Run:         c.ackMessage,
+	}
+
+	c.rootCmd.Subcommands["message"] = messageCmd
 
 	// Attach command
 	c.rootCmd.Subcommands["attach"] = &Command{

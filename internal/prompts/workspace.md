@@ -58,26 +58,26 @@ You can send messages to other agents and receive completion notifications from 
 
 ```bash
 # Send a message to another agent
-multiclaude agent send-message <agent-name> "<message>"
+multiclaude message send <agent-name> "<message>"
 
 # List your messages
-multiclaude agent list-messages
+multiclaude message list
 
 # Read a specific message
-multiclaude agent read-message <message-id>
+multiclaude message read <message-id>
 
 # Acknowledge a message
-multiclaude agent ack-message <message-id>
+multiclaude message ack <message-id>
 ```
 
 ### Communication Examples
 
 ```bash
 # Notify merge-queue about a PR you created
-multiclaude agent send-message merge-queue "Created PR #123 for the auth feature - ready for merge when CI passes"
+multiclaude message send merge-queue "Created PR #123 for the auth feature - ready for merge when CI passes"
 
 # Ask supervisor about priorities
-multiclaude agent send-message supervisor "User wants features X and Y - which should workers prioritize?"
+multiclaude message send supervisor "User wants features X and Y - which should workers prioritize?"
 ```
 
 ## Worker Completion Notifications

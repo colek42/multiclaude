@@ -193,13 +193,19 @@ multiclaude attach <agent-name> --read-only # Observe without interaction
 tmux attach -t mc-<repo>                   # Attach to entire repo session
 ```
 
+### Message Commands (inter-agent communication)
+
+```bash
+multiclaude message send <to> "msg"        # Send message to another agent
+multiclaude message send --all "msg"       # Broadcast to all agents
+multiclaude message list                   # List incoming messages
+multiclaude message read <id>              # Read a specific message
+multiclaude message ack <id>               # Acknowledge a message
+```
+
 ### Agent Commands (run from within Claude)
 
 ```bash
-multiclaude agent send-message <to> "msg"  # Send message to another agent
-multiclaude agent send-message --all "msg" # Broadcast to all agents
-multiclaude agent list-messages            # List incoming messages
-multiclaude agent ack-message <id>         # Acknowledge a message
 multiclaude agent complete                 # Signal task completion (workers)
 ```
 
@@ -340,7 +346,7 @@ multiclaude attach supervisor --read-only
 │  │                                                                         ││
 │  │ Sending help to calm-deer...                                            ││
 │  │                                                                         ││
-│  │ > multiclaude agent send-message calm-deer "I see you're stuck on a     ││
+│  │ > multiclaude message send calm-deer "I see you're stuck on a           ││
 │  │   test failure. The flaky test in auth_test.go sometimes fails due to   ││
 │  │   timing. Try adding a retry or mocking the clock."                     ││
 │  ╰─────────────────────────────────────────────────────────────────────────╯│
@@ -379,7 +385,7 @@ multiclaude attach merge-queue --read-only
 │  │ ✓ Merged #47 into main                                                  ││
 │  │                                                                         ││
 │  │ Notifying supervisor of merge...                                        ││
-│  │ > multiclaude agent send-message supervisor "Merged PR #47: Add rich    ││
+│  │ > multiclaude message send supervisor "Merged PR #47: Add rich          ││
 │  │   list commands"                                                        ││
 │  ╰─────────────────────────────────────────────────────────────────────────╯│
 │                                                                             │

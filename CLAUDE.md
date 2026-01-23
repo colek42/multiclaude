@@ -239,7 +239,7 @@ When modifying daemon loops:
 multiclaude attach <agent-name> --read-only
 
 # Check its messages
-multiclaude agent list-messages  # (from agent's tmux window)
+multiclaude message list  # (from agent's tmux window)
 
 # Manually nudge via daemon logs
 tail -f ~/.multiclaude/daemon.log

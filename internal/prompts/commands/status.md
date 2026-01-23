@@ -28,7 +28,7 @@ Run the following commands and summarize the results:
 
 5. Check for any pending messages:
    ```bash
-   multiclaude agent list-messages
+   multiclaude message list
    ```
 
 Present the results in a clear, organized format with sections for:

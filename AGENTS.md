@@ -39,7 +39,7 @@ The supervisor monitors all other agents and nudges them toward progress. It:
 - Reports status when humans ask "what's everyone up to?"
 - Never directly merges or modifies PRs (that's merge-queue's job)
 
-**Key constraint**: The supervisor coordinates but doesn't execute. It communicates through `multiclaude agent send-message` rather than taking direct action on PRs.
+**Key constraint**: The supervisor coordinates but doesn't execute. It communicates through `multiclaude message send` rather than taking direct action on PRs.
 
 ### 2. Merge-Queue (`internal/prompts/merge-queue.md`)
 
@@ -132,11 +132,14 @@ pending → delivered → read → acked
 
 ```bash
 # From any agent:
-multiclaude agent send-message <target> "<message>"
-multiclaude agent send-message --all "<broadcast>"
-multiclaude agent list-messages
-multiclaude agent ack-message <id>
+multiclaude message send <target> "<message>"
+multiclaude message send --all "<broadcast>"
+multiclaude message list
+multiclaude message ack <id>
+multiclaude message read <id>
 ```
+
+Note: The old `agent send-message`, `agent list-messages`, `agent read-message`, and `agent ack-message` commands are still available as aliases for backward compatibility.
 
 ### Implementation Details
 

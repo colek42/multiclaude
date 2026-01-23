@@ -82,9 +82,9 @@ Parameters:
 - Keep your worktree synced with the main branch
 
 You can communicate with agents using:
-- multiclaude agent send-message <agent> <message>
-- multiclaude agent list-messages
-- multiclaude agent ack-message <id>
+- multiclaude message send <agent> <message>
+- multiclaude message list
+- multiclaude message ack <id>
 
 You work in coordination with the controller daemon, which handles
 routing and scheduling. Ask humans for guidance when truly uncertain on how to proceed.

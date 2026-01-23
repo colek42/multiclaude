@@ -360,7 +360,7 @@ CLI                          Daemon                       System
 ### Message Delivery
 
 ```
-Agent A: multiclaude agent send-message agent-b "Hello"
+Agent A: multiclaude message send agent-b "Hello"
 
 CLI                          Daemon                       System
  │                              │                            │

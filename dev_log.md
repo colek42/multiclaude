@@ -65,7 +65,7 @@
 - `multiclaude work <task>` - Worker creation
 - `multiclaude work list/rm` - Worker management
 - `multiclaude list` - List tracked repos
-- `multiclaude agent send-message/list-messages/ack-message` - Messaging
+- `multiclaude message send/list/read/ack` - Messaging
 - `multiclaude agent complete` - Signal completion
 
 **Testing:**
