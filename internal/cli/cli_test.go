@@ -2715,3 +2715,85 @@ A team-specific bot.
 		t.Errorf("listAgentDefinitions failed: %v", err)
 	}
 }
+
+func TestGetClaudeBinaryReturnsValue(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	binary, err := cli.getClaudeBinary()
+	// May fail if claude not installed, but shouldn't panic
+	if err == nil && binary == "" {
+		t.Error("getClaudeBinary() returned empty string without error")
+	}
+}
+
+func TestShowVersionNoPanic(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test that showVersion doesn't panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("showVersion() panicked: %v", r)
+		}
+	}()
+
+	cli.showVersion()
+}
+
+func TestVersionCommandBasic(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test version command with no flags
+	err := cli.versionCommand([]string{})
+	if err != nil {
+		t.Errorf("versionCommand() failed: %v", err)
+	}
+}
+
+func TestVersionCommandJSON(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test version command with --json flag
+	err := cli.versionCommand([]string{"--json"})
+	if err != nil {
+		t.Errorf("versionCommand(--json) failed: %v", err)
+	}
+}
+
+func TestShowHelpNoPanic(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test that showHelp doesn't panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("showHelp() panicked: %v", r)
+		}
+	}()
+
+	cli.showHelp()
+}
+
+func TestExecuteEmptyArgs(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test Execute with empty args (should show help)
+	err := cli.Execute([]string{})
+	// Should not panic, may or may not error
+	_ = err
+}
+
+func TestExecuteUnknownCommand(t *testing.T) {
+	cli, _, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Test Execute with unknown command
+	err := cli.Execute([]string{"nonexistent-command-xyz"})
+	if err == nil {
+		t.Error("Execute should fail with unknown command")
+	}
+}

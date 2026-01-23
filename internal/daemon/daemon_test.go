@@ -2760,3 +2760,70 @@ func TestHandleClearCurrentRepoWhenNone(t *testing.T) {
 		t.Errorf("clear_current_repo should succeed even when no repo set: %s", resp.Error)
 	}
 }
+
+func TestDaemonWait(t *testing.T) {
+	d, cleanup := setupTestDaemon(t)
+	defer cleanup()
+
+	// Test Wait completes immediately when no goroutines are running
+	done := make(chan struct{})
+	go func() {
+		d.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success - Wait() completed
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Wait() did not complete in time")
+	}
+}
+
+func TestDaemonTriggerHealthCheck(t *testing.T) {
+	d, cleanup := setupTestDaemon(t)
+	defer cleanup()
+
+	// Test TriggerHealthCheck doesn't panic
+	d.TriggerHealthCheck()
+
+	// Test multiple triggers
+	d.TriggerHealthCheck()
+	d.TriggerHealthCheck()
+}
+
+func TestDaemonTriggerMessageRouting(t *testing.T) {
+	d, cleanup := setupTestDaemon(t)
+	defer cleanup()
+
+	// Test TriggerMessageRouting doesn't panic
+	d.TriggerMessageRouting()
+
+	// Test multiple triggers
+	d.TriggerMessageRouting()
+	d.TriggerMessageRouting()
+}
+
+func TestDaemonTriggerWake(t *testing.T) {
+	d, cleanup := setupTestDaemon(t)
+	defer cleanup()
+
+	// Test TriggerWake doesn't panic
+	d.TriggerWake()
+
+	// Test multiple triggers
+	d.TriggerWake()
+	d.TriggerWake()
+}
+
+func TestDaemonTriggerWorktreeRefresh(t *testing.T) {
+	d, cleanup := setupTestDaemon(t)
+	defer cleanup()
+
+	// Test TriggerWorktreeRefresh doesn't panic
+	d.TriggerWorktreeRefresh()
+
+	// Test multiple triggers
+	d.TriggerWorktreeRefresh()
+	d.TriggerWorktreeRefresh()
+}

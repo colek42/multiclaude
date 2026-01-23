@@ -311,3 +311,89 @@ func TestTableEmpty(t *testing.T) {
 		t.Error("Empty table should have separator")
 	}
 }
+
+func TestHeader(t *testing.T) {
+	// Test that Header doesn't panic
+	// We can't easily test the output without capturing stdout
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Header() panicked: %v", r)
+		}
+	}()
+
+	Header("Test Header")
+	Header("Test with %s", "args")
+	Header("Multiple %s %d", "args", 123)
+}
+
+func TestDimmed(t *testing.T) {
+	// Test that Dimmed doesn't panic
+	// We can't easily test the output without capturing stdout
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Dimmed() panicked: %v", r)
+		}
+	}()
+
+	Dimmed("Test dimmed text")
+	Dimmed("Test with %s", "args")
+	Dimmed("Multiple %s %d", "args", 123)
+}
+
+func TestColoredTablePrint(t *testing.T) {
+	// Test that Print doesn't panic
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("ColoredTable.Print() panicked: %v", r)
+		}
+	}()
+
+	table := NewColoredTable("Status", "Name", "Task")
+	table.AddRow(
+		ColorCell("running", Green),
+		Cell("worker-1"),
+		Cell("Some task"),
+	)
+	table.AddRow(
+		ColorCell("stopped", Red),
+		Cell("worker-2"),
+		Cell("Another task"),
+	)
+
+	// This will print to stdout but shouldn't panic
+	table.Print()
+}
+
+func TestColoredTableTotalWidthCalculation(t *testing.T) {
+	// Test totalWidth calculation explicitly
+	table := NewColoredTable("A", "BB", "CCC")
+	// Widths: 1, 2, 3
+	// Total: 1 + 2 + 2 + 3 = 8 (with 2-char spacing between columns)
+	expected := 1 + 2 + 2 + 3 + 2
+	actual := table.totalWidth()
+	if actual != expected {
+		t.Errorf("totalWidth() = %d, want %d", actual, expected)
+	}
+
+	// Add a row that expands widths
+	table.AddRow(Cell("AAAA"), Cell("BBBBB"), Cell("C"))
+	// Widths now: 4, 5, 3
+	// Total: 4 + 2 + 5 + 2 + 3 = 16
+	expected = 4 + 2 + 5 + 2 + 3
+	actual = table.totalWidth()
+	if actual != expected {
+		t.Errorf("totalWidth() after AddRow = %d, want %d", actual, expected)
+	}
+}
+
+func TestColoredTableEmptyPrint(t *testing.T) {
+	// Test printing empty table
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Empty table Print() panicked: %v", r)
+		}
+	}()
+
+	table := NewColoredTable("Header1", "Header2")
+	table.Print()
+}

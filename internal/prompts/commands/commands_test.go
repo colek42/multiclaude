@@ -180,3 +180,45 @@ func containsHelper(s, substr string) bool {
 	}
 	return false
 }
+
+func TestGenerateCommandsDirErrorHandling(t *testing.T) {
+	// Test with invalid path (e.g., inside a file)
+	tmpFile := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(tmpFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Try to create commands dir inside a file
+	invalidDir := filepath.Join(tmpFile, "commands")
+	err := GenerateCommandsDir(invalidDir)
+	if err == nil {
+		t.Error("GenerateCommandsDir should fail with invalid path")
+	}
+}
+
+func TestSetupAgentCommandsErrorHandling(t *testing.T) {
+	// Test with invalid path
+	tmpFile := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(tmpFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Try to setup commands in invalid location
+	err := SetupAgentCommands(tmpFile)
+	if err == nil {
+		t.Error("SetupAgentCommands should fail with invalid path")
+	}
+}
+
+func TestGetCommandAllCommands(t *testing.T) {
+	// Test that all available commands can be retrieved
+	for _, cmd := range AvailableCommands {
+		content, err := GetCommand(cmd.Name)
+		if err != nil {
+			t.Errorf("GetCommand(%q) failed: %v", cmd.Name, err)
+		}
+		if content == "" {
+			t.Errorf("GetCommand(%q) returned empty content", cmd.Name)
+		}
+	}
+}
