@@ -34,7 +34,12 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 	// Note: Claude uses device auth flow (interactive login), no secret needed
 	githubSecret := awssecretsmanager.NewSecret(stack, jsii.String("GithubToken"), &awssecretsmanager.SecretProps{
 		SecretName:  jsii.String("multiclaude/github-token"),
-		Description: jsii.String("GitHub PAT for gh CLI"),
+		Description: jsii.String("GitHub PAT for multiclaude-agent user"),
+	})
+
+	githubSSHKey := awssecretsmanager.NewSecret(stack, jsii.String("GithubSSHKey"), &awssecretsmanager.SecretProps{
+		SecretName:  jsii.String("multiclaude/github-ssh-key"),
+		Description: jsii.String("SSH private key for multiclaude-agent GitHub user"),
 	})
 
 	tailscaleSecret := awssecretsmanager.NewSecret(stack, jsii.String("TailscaleKey"), &awssecretsmanager.SecretProps{
@@ -53,6 +58,7 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 
 	// Grant secrets read access (nil for versionStages = all versions)
 	githubSecret.GrantRead(role, nil)
+	githubSSHKey.GrantRead(role, nil)
 	tailscaleSecret.GrantRead(role, nil)
 
 	// EC2 instance
@@ -172,6 +178,11 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 	awscdk.NewCfnOutput(stack, jsii.String("GitHubSecretArn"), &awscdk.CfnOutputProps{
 		Value:       githubSecret.SecretArn(),
 		Description: jsii.String("ARN of GitHub token secret"),
+	})
+
+	awscdk.NewCfnOutput(stack, jsii.String("GitHubSSHKeyArn"), &awscdk.CfnOutputProps{
+		Value:       githubSSHKey.SecretArn(),
+		Description: jsii.String("ARN of GitHub SSH private key secret"),
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("TailscaleSecretArn"), &awscdk.CfnOutputProps{

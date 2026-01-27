@@ -53,10 +53,45 @@ cat > /home/dev/fetch-secrets.sh << 'EOF'
 set -euo pipefail
 
 REGION="us-east-1"
+GITHUB_USER="multiclaude-agent"
+GITHUB_EMAIL="multiclaude-agent@testifysec.com"
 
-echo "=== Configuring authentication ==="
+echo "=== Configuring multiclaude-agent identity ==="
 
-# GitHub token from Secrets Manager
+# Configure git identity
+echo "Setting up git identity..."
+git config --global user.name "$GITHUB_USER"
+git config --global user.email "$GITHUB_EMAIL"
+echo "Git identity: $GITHUB_USER <$GITHUB_EMAIL>"
+
+# SSH key from Secrets Manager
+echo "Fetching SSH private key..."
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
+aws secretsmanager get-secret-value \
+    --secret-id multiclaude/github-ssh-key \
+    --query SecretString \
+    --output text \
+    --region "$REGION" | jq -r '.private_key' > ~/.ssh/id_ed25519
+chmod 600 ~/.ssh/id_ed25519
+
+# Configure SSH for GitHub
+cat > ~/.ssh/config << 'SSHEOF'
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+SSHEOF
+chmod 600 ~/.ssh/config
+
+# Add GitHub to known hosts
+ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+echo "SSH key configured"
+
+# GitHub token from Secrets Manager (for gh CLI)
 echo "Fetching GitHub token..."
 GH_TOKEN=$(aws secretsmanager get-secret-value \
     --secret-id multiclaude/github-token \
@@ -67,6 +102,11 @@ echo "$GH_TOKEN" | gh auth login --with-token
 echo "GitHub auth status:"
 gh auth status
 
+# Test SSH connection
+echo ""
+echo "Testing SSH connection to GitHub..."
+ssh -T git@github.com 2>&1 || true
+
 # Claude - use device auth flow (interactive)
 echo ""
 echo "=== Claude CLI Login ==="
@@ -74,8 +114,8 @@ echo "Run 'claude login' to authenticate with device flow."
 echo "This will open a URL for you to authorize in your browser."
 echo ""
 
-echo "Secrets configured successfully!"
-echo ""
+echo "=== Setup complete ==="
+echo "Identity: $GITHUB_USER <$GITHUB_EMAIL>"
 echo "Next: Run 'claude login' to authenticate Claude CLI"
 EOF
 
