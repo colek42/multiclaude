@@ -47,25 +47,16 @@ mkdir -p /home/dev/.config/systemd/user
 mkdir -p /home/dev/.local/bin
 mkdir -p /home/dev/go/bin
 
-# fetch-secrets.sh - pulls secrets from Secrets Manager
+# fetch-secrets.sh - pulls secrets from Secrets Manager and configures auth
 cat > /home/dev/fetch-secrets.sh << 'EOF'
 #!/bin/bash
 set -euo pipefail
 
 REGION="us-east-1"
 
-echo "Fetching secrets from AWS Secrets Manager..."
+echo "=== Configuring authentication ==="
 
-# Claude credentials
-echo "Fetching Claude credentials..."
-aws secretsmanager get-secret-value \
-    --secret-id multiclaude/claude-credentials \
-    --query SecretString \
-    --output text \
-    --region "$REGION" > ~/.claude/.credentials.json
-chmod 600 ~/.claude/.credentials.json
-
-# GitHub token
+# GitHub token from Secrets Manager
 echo "Fetching GitHub token..."
 GH_TOKEN=$(aws secretsmanager get-secret-value \
     --secret-id multiclaude/github-token \
@@ -76,7 +67,16 @@ echo "$GH_TOKEN" | gh auth login --with-token
 echo "GitHub auth status:"
 gh auth status
 
+# Claude - use device auth flow (interactive)
+echo ""
+echo "=== Claude CLI Login ==="
+echo "Run 'claude login' to authenticate with device flow."
+echo "This will open a URL for you to authorize in your browser."
+echo ""
+
 echo "Secrets configured successfully!"
+echo ""
+echo "Next: Run 'claude login' to authenticate Claude CLI"
 EOF
 
 # deploy.sh - pulls repo, builds, restarts daemon

@@ -1,0 +1,62 @@
+name: Deploy CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/deploy-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/deploy-ci.yml'
+
+jobs:
+  build:
+    name: Build & Validate CDK
+    runs-on: ubuntu-latest
+    # Only run in colek42's fork
+    if: github.repository == 'colek42/multiclaude'
+
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+          cache-dependency-path: deploy/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Build CDK app
+        working-directory: deploy
+        run: go build -v .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::898769392027:role/github-actions-multiclaude
+          aws-region: us-east-1
+
+      - name: CDK Synth
+        working-directory: deploy
+        run: cdk synth --quiet
+
+      - name: CDK Diff
+        if: github.event_name == 'pull_request'
+        working-directory: deploy
+        run: cdk diff || true

@@ -31,11 +31,7 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 	})
 
 	// Secrets - values are added manually after deployment
-	claudeSecret := awssecretsmanager.NewSecret(stack, jsii.String("ClaudeCreds"), &awssecretsmanager.SecretProps{
-		SecretName:  jsii.String("multiclaude/claude-credentials"),
-		Description: jsii.String("Claude CLI credentials (~/.claude/.credentials.json)"),
-	})
-
+	// Note: Claude uses device auth flow (interactive login), no secret needed
 	githubSecret := awssecretsmanager.NewSecret(stack, jsii.String("GithubToken"), &awssecretsmanager.SecretProps{
 		SecretName:  jsii.String("multiclaude/github-token"),
 		Description: jsii.String("GitHub PAT for gh CLI"),
@@ -56,7 +52,6 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 	})
 
 	// Grant secrets read access (nil for versionStages = all versions)
-	claudeSecret.GrantRead(role, nil)
 	githubSecret.GrantRead(role, nil)
 	tailscaleSecret.GrantRead(role, nil)
 
@@ -172,11 +167,6 @@ func NewMulticlaudeStack(scope constructs.Construct, id string, props *awscdk.St
 	awscdk.NewCfnOutput(stack, jsii.String("GitHubActionsRoleArn"), &awscdk.CfnOutputProps{
 		Value:       githubActionsRole.RoleArn(),
 		Description: jsii.String("IAM Role ARN for GitHub Actions OIDC"),
-	})
-
-	awscdk.NewCfnOutput(stack, jsii.String("ClaudeSecretArn"), &awscdk.CfnOutputProps{
-		Value:       claudeSecret.SecretArn(),
-		Description: jsii.String("ARN of Claude credentials secret"),
 	})
 
 	awscdk.NewCfnOutput(stack, jsii.String("GitHubSecretArn"), &awscdk.CfnOutputProps{
