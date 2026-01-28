@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -151,17 +152,15 @@ func TestDetectFork_ForkWithExistingUpstream(t *testing.T) {
 	tmpDir := setupTestRepo(t)
 	defer os.RemoveAll(tmpDir)
 
-	// Add origin
-	cmd := exec.Command("git", "remote", "add", "origin", "https://github.com/myuser/myrepo")
-	cmd.Dir = tmpDir
+	// Add origin (using isolated git to avoid URL rewrites)
+	cmd := gitCmdIsolated(tmpDir, "remote", "add", "origin", "https://github.com/myuser/myrepo")
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to add origin: %v", err)
 	}
 
 	// Add upstream (simulating a fork)
 	upstreamURL := "https://github.com/upstream/repo"
-	cmd = exec.Command("git", "remote", "add", "upstream", upstreamURL)
-	cmd.Dir = tmpDir
+	cmd = gitCmdIsolated(tmpDir, "remote", "add", "upstream", upstreamURL)
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to add upstream: %v", err)
 	}
@@ -175,8 +174,9 @@ func TestDetectFork_ForkWithExistingUpstream(t *testing.T) {
 	if !info.IsFork {
 		t.Error("expected IsFork to be true with upstream remote")
 	}
-	if info.UpstreamURL != upstreamURL {
-		t.Errorf("UpstreamURL = %q, want %q", info.UpstreamURL, upstreamURL)
+	// Use urlsEquivalent for comparison since user config may rewrite URLs
+	if !urlsEquivalent(info.UpstreamURL, upstreamURL) {
+		t.Errorf("UpstreamURL = %q, want equivalent to %q", info.UpstreamURL, upstreamURL)
 	}
 }
 
@@ -185,16 +185,14 @@ func TestDetectFork_SSHRemotes(t *testing.T) {
 	tmpDir := setupTestRepo(t)
 	defer os.RemoveAll(tmpDir)
 
-	// Add origin with SSH URL
-	cmd := exec.Command("git", "remote", "add", "origin", "git@github.com:myuser/myrepo.git")
-	cmd.Dir = tmpDir
+	// Add origin with SSH URL (using isolated git to prevent URL rewrites)
+	cmd := gitCmdIsolated(tmpDir, "remote", "add", "origin", "git@github.com:myuser/myrepo.git")
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to add origin: %v", err)
 	}
 
 	// Add upstream with SSH URL
-	cmd = exec.Command("git", "remote", "add", "upstream", "git@github.com:upstream/repo.git")
-	cmd.Dir = tmpDir
+	cmd = gitCmdIsolated(tmpDir, "remote", "add", "upstream", "git@github.com:upstream/repo.git")
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to add upstream: %v", err)
 	}
@@ -233,16 +231,15 @@ func TestAddUpstreamRemote_Idempotent(t *testing.T) {
 		t.Fatalf("Second AddUpstreamRemote() failed: %v", err)
 	}
 
-	// Verify URL is correct
-	cmd := exec.Command("git", "remote", "get-url", "upstream")
-	cmd.Dir = tmpDir
+	// Verify URL is correct - use urlsEquivalent for comparison since user config may rewrite URLs
+	cmd := exec.Command("git", "-C", tmpDir, "remote", "get-url", "upstream")
 	output, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("failed to get upstream url: %v", err)
 	}
-	got := string(output)
-	if got != upstreamURL+"\n" {
-		t.Errorf("upstream URL = %q, want %q", got, upstreamURL)
+	got := strings.TrimSpace(string(output))
+	if !urlsEquivalent(got, upstreamURL) {
+		t.Errorf("upstream URL = %q, want equivalent to %q", got, upstreamURL)
 	}
 }
 
@@ -339,7 +336,7 @@ func TestGetRemoteURL_MultipleRemotes(t *testing.T) {
 	tmpDir := setupTestRepo(t)
 	defer os.RemoveAll(tmpDir)
 
-	// Add multiple remotes
+	// Add multiple remotes (using isolated git to prevent URL rewrites)
 	remotes := map[string]string{
 		"origin":   "https://github.com/test/origin-repo",
 		"upstream": "https://github.com/test/upstream-repo",
@@ -347,22 +344,22 @@ func TestGetRemoteURL_MultipleRemotes(t *testing.T) {
 	}
 
 	for name, url := range remotes {
-		cmd := exec.Command("git", "remote", "add", name, url)
-		cmd.Dir = tmpDir
+		cmd := gitCmdIsolated(tmpDir, "remote", "add", name, url)
 		if err := cmd.Run(); err != nil {
 			t.Fatalf("failed to add remote %s: %v", name, err)
 		}
 	}
 
-	// Test getting each remote URL
+	// Test getting each remote URL - use urlsEquivalent for comparison
+	// since user config may rewrite URLs
 	for name, expectedURL := range remotes {
 		url, err := getRemoteURL(tmpDir, name)
 		if err != nil {
 			t.Errorf("getRemoteURL(%s) failed: %v", name, err)
 			continue
 		}
-		if url != expectedURL {
-			t.Errorf("getRemoteURL(%s) = %q, want %q", name, url, expectedURL)
+		if !urlsEquivalent(url, expectedURL) {
+			t.Errorf("getRemoteURL(%s) = %q, want equivalent to %q", name, url, expectedURL)
 		}
 	}
 }
@@ -373,9 +370,8 @@ func TestDetectFork_SymlinkPath(t *testing.T) {
 	tmpDir := setupTestRepo(t)
 	defer os.RemoveAll(tmpDir)
 
-	// Add origin
-	cmd := exec.Command("git", "remote", "add", "origin", "https://github.com/myuser/myrepo")
-	cmd.Dir = tmpDir
+	// Add origin (using isolated git to prevent URL rewrites)
+	cmd := gitCmdIsolated(tmpDir, "remote", "add", "origin", "https://github.com/myuser/myrepo")
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to add origin: %v", err)
 	}
