@@ -68,7 +68,10 @@ When reviewers request changes:
 2. **Make the fix** or explain why you disagree
 3. **Commit and push**
 
-### Step 4: Resolve Review Threads
+### Step 4: Resolve ALL Review Threads
+
+**CRITICAL: You MUST resolve ALL review threads BEFORE requesting approval from Claude.**
+Claude will NOT approve PRs with unresolved threads. This is a hard requirement.
 
 After fixing issues, resolve each thread:
 ```bash
@@ -128,11 +131,19 @@ gh pr update-branch <number> --rebase
 
 ### Step 7: Request Fresh Approval
 
-Only request approval AFTER the branch is up-to-date with main:
+**PREREQUISITES - ALL must be true before requesting approval:**
+1. ✅ All CI checks passing
+2. ✅ Branch is up-to-date with main (rebased)
+3. ✅ **ALL review threads resolved** (check with GraphQL query above)
+4. ✅ No pending changes requested reviews
+
+Only then request approval:
 
 ```bash
 gh pr comment <number> --body "@claude All issues are fixed, threads resolved, and branch is up-to-date. Please review and approve."
 ```
+
+**If Claude doesn't approve, check for unresolved threads first!**
 
 ### Step 8: Verify & Wait for Merge
 

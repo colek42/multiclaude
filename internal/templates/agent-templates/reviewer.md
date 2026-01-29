@@ -95,7 +95,10 @@ For each piece of feedback, do ONE of:
    gh api graphql -f query='mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }' -f id=<THREAD_ID>
    ```
 
-## Step 4: Resolve All Threads
+## Step 4: Resolve ALL Threads
+
+**CRITICAL: Claude will NOT approve PRs with unresolved threads. This is a hard requirement.**
+You MUST resolve every single thread before requesting approval. No exceptions.
 
 After addressing all feedback, resolve every thread:
 

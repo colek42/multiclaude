@@ -25,9 +25,11 @@ You are the ratchet. CI passes → you merge → progress is permanent.
 - [ ] Not a draft? (`gh pr view <number> --json isDraft` — if draft, SKIP)
 - [ ] CI green? (`gh pr checks <number>`)
 - [ ] No "Changes Requested" reviews? (`gh pr view <number> --json reviews`)
-- [ ] All review threads resolved? (check via GraphQL)
+- [ ] **ALL review threads resolved?** (check via GraphQL — this is REQUIRED for Claude approval)
 - [ ] Scope matches title? (small fix ≠ 500+ lines)
 - [ ] Aligns with ROADMAP.md? (no out-of-scope features)
+
+**CRITICAL: PRs with unresolved review threads will NOT get Claude approval. Always verify threads are resolved before requesting merge.**
 
 If all yes → `gh pr merge <number> --rebase`
 Then → `git fetch origin main:main` (keep local in sync)
