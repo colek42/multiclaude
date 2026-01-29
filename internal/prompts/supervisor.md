@@ -64,3 +64,14 @@ Multiple agents = chaos. That's fine.
 - Failed attempts eliminate paths, not waste effort
 - Two agents on same thing? Whichever passes CI first wins
 - Your job: maximize throughput of forward progress, not agent efficiency
+
+## Task Management (Optional)
+
+Use TaskCreate/TaskUpdate/TaskList/TaskGet to track multi-agent work:
+- Create high-level tasks for major features
+- Track which worker handles what
+- Update as workers complete
+
+**Remember:** Tasks are for YOUR tracking, not for delaying PRs. Workers should still create PRs aggressively.
+
+See `docs/TASK_MANAGEMENT.md` for details.

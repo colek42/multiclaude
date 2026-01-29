@@ -316,6 +316,7 @@ func setupTestEnvironment(t *testing.T) (*CLI, *daemon.Daemon, func()) {
 		MessagesDir:     filepath.Join(tmpDir, "messages"),
 		OutputDir:       filepath.Join(tmpDir, "output"),
 		ClaudeConfigDir: filepath.Join(tmpDir, "claude-config"),
+		ArchiveDir:      filepath.Join(tmpDir, "archive"),
 	}
 
 	if err := paths.EnsureDirectories(); err != nil {
@@ -396,6 +397,51 @@ func TestCLIDaemonStatus(t *testing.T) {
 	err := cli.Execute([]string{"daemon", "status"})
 	if err != nil {
 		t.Errorf("daemon status failed: %v", err)
+	}
+}
+
+func TestCLISystemStatusWithDaemon(t *testing.T) {
+	cli, d, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// System status with daemon running but no repos
+	err := cli.Execute([]string{"status"})
+	if err != nil {
+		t.Errorf("system status failed: %v", err)
+	}
+
+	// Add a repo and check again
+	repo := &state.Repository{
+		GithubURL:   "https://github.com/test/repo",
+		TmuxSession: "mc-test-repo",
+		Agents:      make(map[string]state.Agent),
+	}
+	if err := d.GetState().AddRepo("test-repo", repo); err != nil {
+		t.Fatalf("Failed to add repo: %v", err)
+	}
+
+	// System status should show the repo
+	err = cli.Execute([]string{"status"})
+	if err != nil {
+		t.Errorf("system status with repo failed: %v", err)
+	}
+}
+
+func TestCLISystemStatusWithoutDaemon(t *testing.T) {
+	// Create CLI without starting daemon
+	tmpDir, err := os.MkdirTemp("", "cli-test-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	paths := config.NewTestPaths(tmpDir)
+	cli := NewWithPaths(paths)
+
+	// System status should NOT error when daemon not running
+	err = cli.Execute([]string{"status"})
+	if err != nil {
+		t.Errorf("system status should not error when daemon not running: %v", err)
 	}
 }
 
@@ -662,6 +708,7 @@ func TestCLISendMessageFallbackWhenDaemonUnavailable(t *testing.T) {
 		MessagesDir:     filepath.Join(tmpDir, "messages"),
 		OutputDir:       filepath.Join(tmpDir, "output"),
 		ClaudeConfigDir: filepath.Join(tmpDir, "claude-config"),
+		ArchiveDir:      filepath.Join(tmpDir, "archive"),
 	}
 
 	if err := paths.EnsureDirectories(); err != nil {
@@ -1044,6 +1091,7 @@ func TestNewWithPaths(t *testing.T) {
 		MessagesDir:     filepath.Join(tmpDir, "messages"),
 		OutputDir:       filepath.Join(tmpDir, "output"),
 		ClaudeConfigDir: filepath.Join(tmpDir, "claude-config"),
+		ArchiveDir:      filepath.Join(tmpDir, "archive"),
 	}
 
 	// Test CLI creation

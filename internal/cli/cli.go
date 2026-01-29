@@ -16,6 +16,7 @@ import (
 	"github.com/dlorenc/multiclaude/internal/agents"
 	"github.com/dlorenc/multiclaude/internal/bugreport"
 	"github.com/dlorenc/multiclaude/internal/daemon"
+	"github.com/dlorenc/multiclaude/internal/diagnostics"
 	"github.com/dlorenc/multiclaude/internal/errors"
 	"github.com/dlorenc/multiclaude/internal/fork"
 	"github.com/dlorenc/multiclaude/internal/format"
@@ -320,6 +321,14 @@ func (c *CLI) registerCommands() {
 		Run:         c.startDaemon,
 	}
 
+	// Root-level status command - comprehensive system overview
+	c.rootCmd.Subcommands["status"] = &Command{
+		Name:        "status",
+		Description: "Show system status overview",
+		Usage:       "multiclaude status",
+		Run:         c.systemStatus,
+	}
+
 	daemonCmd := &Command{
 		Name:        "daemon",
 		Description: "Manage the multiclaude daemon",
@@ -424,6 +433,13 @@ func (c *CLI) registerCommands() {
 		Description: "Show task history for a repository",
 		Usage:       "multiclaude repo history [--repo <repo>] [-n <count>] [--status <status>] [--search <query>] [--full]",
 		Run:         c.showHistory,
+	}
+
+	repoCmd.Subcommands["hibernate"] = &Command{
+		Name:        "hibernate",
+		Description: "Hibernate a repository, archiving uncommitted changes",
+		Usage:       "multiclaude repo hibernate [--repo <repo>] [--all] [--yes]",
+		Run:         c.hibernateRepo,
 	}
 
 	c.rootCmd.Subcommands["repo"] = repoCmd
@@ -625,6 +641,13 @@ func (c *CLI) registerCommands() {
 		Run:         c.repair,
 	}
 
+	c.rootCmd.Subcommands["refresh"] = &Command{
+		Name:        "refresh",
+		Description: "Sync agent worktrees with main branch",
+		Usage:       "multiclaude refresh",
+		Run:         c.refresh,
+	}
+
 	// Claude restart command - for resuming Claude after exit
 	c.rootCmd.Subcommands["claude"] = &Command{
 		Name:        "claude",
@@ -696,6 +719,14 @@ func (c *CLI) registerCommands() {
 		Description: "Generate a diagnostic bug report",
 		Usage:       "multiclaude bug [--output <file>] [--verbose] [description]",
 		Run:         c.bugReport,
+	}
+
+	// Diagnostics command
+	c.rootCmd.Subcommands["diagnostics"] = &Command{
+		Name:        "diagnostics",
+		Description: "Show system diagnostics in machine-readable format",
+		Usage:       "multiclaude diagnostics [--json] [--output <file>]",
+		Run:         c.diagnostics,
 	}
 
 	// Version command
@@ -798,6 +829,112 @@ func (c *CLI) daemonStatus(args []string) error {
 		fmt.Println(string(jsonData))
 	}
 
+	return nil
+}
+
+// systemStatus shows a comprehensive system overview that gracefully handles
+// the daemon not running (unlike list commands which error).
+func (c *CLI) systemStatus(args []string) error {
+	// Check PID file first
+	pidFile := daemon.NewPIDFile(c.paths.DaemonPID)
+	running, pid, err := pidFile.IsRunning()
+	if err != nil {
+		return fmt.Errorf("failed to check daemon status: %w", err)
+	}
+
+	if !running {
+		format.Header("Multiclaude Status")
+		fmt.Println()
+		fmt.Printf("  Daemon: %s\n", format.Red.Sprint("not running"))
+		fmt.Println()
+		format.Dimmed("Start with: multiclaude daemon start")
+		return nil
+	}
+
+	// Try to connect to daemon and get rich status
+	client := socket.NewClient(c.paths.DaemonSock)
+	resp, err := client.Send(socket.Request{
+		Command: "list_repos",
+		Args:    map[string]interface{}{"rich": true},
+	})
+
+	if err != nil {
+		format.Header("Multiclaude Status")
+		fmt.Println()
+		fmt.Printf("  Daemon: %s (PID: %d, not responding)\n", format.Yellow.Sprint("unhealthy"), pid)
+		fmt.Println()
+		format.Dimmed("Try: multiclaude daemon stop && multiclaude daemon start")
+		return nil
+	}
+
+	if !resp.Success {
+		format.Header("Multiclaude Status")
+		fmt.Println()
+		fmt.Printf("  Daemon: %s (PID: %d)\n", format.Yellow.Sprint("error"), pid)
+		fmt.Printf("  Error: %s\n", resp.Error)
+		return nil
+	}
+
+	// Print status header
+	format.Header("Multiclaude Status")
+	fmt.Println()
+	fmt.Printf("  Daemon: %s (PID: %d)\n", format.Green.Sprint("running"), pid)
+
+	repos, ok := resp.Data.([]interface{})
+	if !ok || len(repos) == 0 {
+		fmt.Printf("  Repos:  %s\n", format.Dim.Sprint("none"))
+		fmt.Println()
+		format.Dimmed("Initialize a repo with: multiclaude init <github-url>")
+		return nil
+	}
+
+	fmt.Printf("  Repos:  %d\n", len(repos))
+	fmt.Println()
+
+	// Show each repo with agents
+	for _, repo := range repos {
+		repoMap, ok := repo.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		name, _ := repoMap["name"].(string)
+		totalAgents := 0
+		if v, ok := repoMap["total_agents"].(float64); ok {
+			totalAgents = int(v)
+		}
+		workerCount := 0
+		if v, ok := repoMap["worker_count"].(float64); ok {
+			workerCount = int(v)
+		}
+		sessionHealthy, _ := repoMap["session_healthy"].(bool)
+
+		// Repo line
+		repoStatus := format.Green.Sprint("●")
+		if !sessionHealthy {
+			repoStatus = format.Yellow.Sprint("○")
+		}
+		fmt.Printf("  %s %s\n", repoStatus, format.Bold.Sprint(name))
+
+		// Agent summary
+		coreAgents := totalAgents - workerCount
+		if coreAgents < 0 {
+			coreAgents = 0
+		}
+		fmt.Printf("      Agents: %d core, %d workers\n", coreAgents, workerCount)
+
+		// Show fork info if applicable
+		if isFork, _ := repoMap["is_fork"].(bool); isFork {
+			upstreamOwner, _ := repoMap["upstream_owner"].(string)
+			upstreamRepo, _ := repoMap["upstream_repo"].(string)
+			if upstreamOwner != "" && upstreamRepo != "" {
+				fmt.Printf("      Fork of: %s/%s\n", upstreamOwner, upstreamRepo)
+			}
+		}
+	}
+
+	fmt.Println()
+	format.Dimmed("Details: multiclaude repo list | multiclaude worker list")
 	return nil
 }
 
@@ -1082,13 +1219,42 @@ func (c *CLI) initRepo(args []string) error {
 
 	// Check if daemon is running
 	client := socket.NewClient(c.paths.DaemonSock)
-	_, err := client.Send(socket.Request{Command: "ping"})
-	if err != nil {
+	if _, err := client.Send(socket.Request{Command: "ping"}); err != nil {
 		return errors.DaemonNotRunning()
 	}
 
-	// Clone repository
+	// Check if repository is already initialized
+	st, err := state.Load(c.paths.StateFile)
+	if err != nil {
+		return fmt.Errorf("failed to load state: %w", err)
+	}
+	if _, exists := st.GetRepo(repoName); exists {
+		return fmt.Errorf("repository '%s' is already initialized\nUse 'multiclaude repo rm %s' to remove it first, or choose a different name", repoName, repoName)
+	}
+
+	// Check if tmux session already exists (stale session from previous incomplete init)
+	tmuxSession := sanitizeTmuxSessionName(repoName)
+	if tmuxSession == "mc-" {
+		return fmt.Errorf("invalid tmux session name: repository name cannot be empty")
+	}
+	tmuxClient := tmux.NewClient()
+	if exists, err := tmuxClient.HasSession(context.Background(), tmuxSession); err == nil && exists {
+		fmt.Printf("Warning: Tmux session '%s' already exists\n", tmuxSession)
+		fmt.Printf("This may be from a previous incomplete initialization.\n")
+		fmt.Printf("Auto-repairing: killing existing tmux session...\n")
+		if err := tmuxClient.KillSession(context.Background(), tmuxSession); err != nil {
+			return fmt.Errorf("failed to clean up existing tmux session: %w\nPlease manually kill it with: tmux kill-session -t %s", err, tmuxSession)
+		}
+		fmt.Println("✓ Cleaned up stale tmux session")
+	}
+
+	// Check if repository directory already exists
 	repoPath := c.paths.RepoDir(repoName)
+	if _, err := os.Stat(repoPath); err == nil {
+		return fmt.Errorf("directory already exists: %s\nRemove it manually or choose a different name", repoPath)
+	}
+
+	// Clone repository
 	fmt.Printf("Cloning to: %s\n", repoPath)
 
 	cmd := exec.Command("git", "clone", githubURL, repoPath)
@@ -1140,12 +1306,7 @@ func (c *CLI) initRepo(args []string) error {
 		return fmt.Errorf("failed to copy agent templates: %w", err)
 	}
 
-	// Create tmux session
-	tmuxSession := sanitizeTmuxSessionName(repoName)
-	if tmuxSession == "mc-" {
-		return fmt.Errorf("invalid tmux session name: repository name cannot be empty")
-	}
-
+	// Create tmux session (tmuxSession already defined and validated earlier)
 	fmt.Printf("Creating tmux session: %s\n", tmuxSession)
 
 	// Create session with supervisor window
@@ -2828,6 +2989,245 @@ func (c *CLI) removeWorker(args []string) error {
 	return nil
 }
 
+// hibernateRepo stops all work in a repository and archives uncommitted changes
+func (c *CLI) hibernateRepo(args []string) error {
+	flags, _ := ParseFlags(args)
+	skipConfirm := flags["yes"] == "true"
+	hibernateAll := flags["all"] == "true" // Also hibernate persistent agents (supervisor, workspace)
+
+	// Determine repository
+	repoName, err := c.resolveRepo(flags)
+	if err != nil {
+		return errors.NotInRepo()
+	}
+
+	// Get agent list from daemon
+	client := socket.NewClient(c.paths.DaemonSock)
+	resp, err := client.Send(socket.Request{
+		Command: "list_agents",
+		Args: map[string]interface{}{
+			"repo": repoName,
+		},
+	})
+	if err != nil {
+		return errors.DaemonCommunicationFailed("getting agent info", err)
+	}
+	if !resp.Success {
+		return errors.Wrap(errors.CategoryRuntime, "failed to get agent info", fmt.Errorf("%s", resp.Error))
+	}
+
+	agents, _ := resp.Data.([]interface{})
+	if len(agents) == 0 {
+		fmt.Printf("No agents running in repository '%s'\n", repoName)
+		return nil
+	}
+
+	// Filter agents to hibernate (workers, review agents; optionally all)
+	var agentsToHibernate []map[string]interface{}
+	var agentsWithChanges []map[string]interface{}
+
+	for _, agent := range agents {
+		agentMap, ok := agent.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		agentType, _ := agentMap["type"].(string)
+		wtPath, _ := agentMap["worktree_path"].(string)
+
+		// Determine if this agent should be hibernated
+		shouldHibernate := false
+		switch agentType {
+		case "worker", "review":
+			shouldHibernate = true
+		case "supervisor", "merge-queue", "pr-shepherd", "workspace", "generic-persistent":
+			shouldHibernate = hibernateAll
+		}
+
+		if !shouldHibernate {
+			continue
+		}
+
+		agentsToHibernate = append(agentsToHibernate, agentMap)
+
+		// Check for uncommitted changes
+		if wtPath != "" {
+			hasUncommitted, err := worktree.HasUncommittedChanges(wtPath)
+			if err == nil && hasUncommitted {
+				agentsWithChanges = append(agentsWithChanges, agentMap)
+			}
+		}
+	}
+
+	if len(agentsToHibernate) == 0 {
+		fmt.Printf("No agents to hibernate in repository '%s'\n", repoName)
+		if !hibernateAll {
+			fmt.Println("Use --all to also hibernate persistent agents (supervisor, workspace, etc.)")
+		}
+		return nil
+	}
+
+	// Show summary and confirm
+	fmt.Printf("Hibernating %d agent(s) in repository '%s':\n", len(agentsToHibernate), repoName)
+	for _, agent := range agentsToHibernate {
+		name, _ := agent["name"].(string)
+		agentType, _ := agent["type"].(string)
+		hasChanges := false
+		for _, changed := range agentsWithChanges {
+			if changed["name"] == name {
+				hasChanges = true
+				break
+			}
+		}
+		changeMarker := ""
+		if hasChanges {
+			changeMarker = " [has uncommitted changes]"
+		}
+		fmt.Printf("  - %s (%s)%s\n", name, agentType, changeMarker)
+	}
+
+	if len(agentsWithChanges) > 0 {
+		fmt.Printf("\n%d agent(s) have uncommitted changes that will be archived.\n", len(agentsWithChanges))
+	}
+
+	if !skipConfirm {
+		fmt.Print("\nContinue? [y/N]: ")
+		var response string
+		fmt.Scanln(&response)
+		if response != "y" && response != "Y" {
+			fmt.Println("Cancelled")
+			return nil
+		}
+	}
+
+	// Create archive directory with timestamp
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	archiveDir := filepath.Join(c.paths.RepoArchiveDir(repoName), timestamp)
+	if len(agentsWithChanges) > 0 {
+		if err := os.MkdirAll(archiveDir, 0755); err != nil {
+			return fmt.Errorf("failed to create archive directory: %w", err)
+		}
+		fmt.Printf("\nArchiving to: %s\n", archiveDir)
+	}
+
+	// Archive uncommitted changes
+	var archivedAgents []string
+	for _, agent := range agentsWithChanges {
+		name, _ := agent["name"].(string)
+		wtPath, _ := agent["worktree_path"].(string)
+		branch, _ := agent["branch"].(string)
+		task, _ := agent["task"].(string)
+
+		fmt.Printf("Archiving changes from %s...\n", name)
+
+		// Create patch file with git diff
+		patchPath := filepath.Join(archiveDir, name+".patch")
+		cmd := exec.Command("git", "diff", "HEAD")
+		cmd.Dir = wtPath
+		output, err := cmd.Output()
+		if err != nil {
+			fmt.Printf("Warning: failed to create patch for %s: %v\n", name, err)
+			continue
+		}
+
+		// Include untracked files in the patch
+		untrackedCmd := exec.Command("git", "ls-files", "--others", "--exclude-standard")
+		untrackedCmd.Dir = wtPath
+		untrackedOutput, _ := untrackedCmd.Output()
+
+		// Write patch file
+		if err := os.WriteFile(patchPath, output, 0644); err != nil {
+			fmt.Printf("Warning: failed to write patch for %s: %v\n", name, err)
+			continue
+		}
+
+		// Write untracked files list if any
+		if len(untrackedOutput) > 0 {
+			untrackedPath := filepath.Join(archiveDir, name+".untracked")
+			os.WriteFile(untrackedPath, untrackedOutput, 0644)
+		}
+
+		// Write metadata for this agent
+		metaPath := filepath.Join(archiveDir, name+".json")
+		meta := map[string]interface{}{
+			"name":          name,
+			"type":          agent["type"],
+			"branch":        branch,
+			"task":          task,
+			"worktree_path": wtPath,
+			"archived_at":   time.Now().Format(time.RFC3339),
+		}
+		metaData, _ := json.MarshalIndent(meta, "", "  ")
+		os.WriteFile(metaPath, metaData, 0644)
+
+		archivedAgents = append(archivedAgents, name)
+	}
+
+	// Write summary metadata
+	if len(agentsWithChanges) > 0 {
+		summaryPath := filepath.Join(archiveDir, "hibernate-summary.json")
+		summary := map[string]interface{}{
+			"repo":              repoName,
+			"hibernated_at":     time.Now().Format(time.RFC3339),
+			"agents_hibernated": len(agentsToHibernate),
+			"agents_archived":   archivedAgents,
+		}
+		summaryData, _ := json.MarshalIndent(summary, "", "  ")
+		os.WriteFile(summaryPath, summaryData, 0644)
+	}
+
+	// Stop agents
+	tmuxSession := sanitizeTmuxSessionName(repoName)
+	repoPath := c.paths.RepoDir(repoName)
+	wt := worktree.NewManager(repoPath)
+
+	fmt.Println()
+	for _, agent := range agentsToHibernate {
+		name, _ := agent["name"].(string)
+		wtPath, _ := agent["worktree_path"].(string)
+		tmuxWindow, _ := agent["tmux_window"].(string)
+
+		fmt.Printf("Stopping %s...\n", name)
+
+		// Kill tmux window
+		if tmuxWindow != "" {
+			cmd := exec.Command("tmux", "kill-window", "-t", fmt.Sprintf("%s:%s", tmuxSession, tmuxWindow))
+			cmd.Run() // Ignore errors
+		}
+
+		// Remove worktree (force since we archived changes)
+		if wtPath != "" {
+			if err := wt.Remove(wtPath, true); err != nil {
+				// Try harder with force
+				cmd := exec.Command("git", "worktree", "remove", "--force", wtPath)
+				cmd.Dir = repoPath
+				cmd.Run()
+			}
+		}
+
+		// Unregister from daemon (ignore errors during cleanup)
+		_, _ = client.Send(socket.Request{
+			Command: "remove_agent",
+			Args: map[string]interface{}{
+				"repo":  repoName,
+				"agent": name,
+			},
+		})
+	}
+
+	fmt.Println()
+	fmt.Printf("✓ Hibernated %d agent(s) in '%s'\n", len(agentsToHibernate), repoName)
+	if len(archivedAgents) > 0 {
+		fmt.Printf("✓ Archived %d agent(s) with uncommitted changes to:\n", len(archivedAgents))
+		fmt.Printf("  %s\n", archiveDir)
+		fmt.Println("\nTo restore archived patches:")
+		fmt.Println("  cd <worktree>")
+		fmt.Printf("  git apply %s/<agent>.patch\n", archiveDir)
+	}
+
+	return nil
+}
+
 // Workspace command implementations
 
 // workspaceDefault handles `multiclaude workspace` with no subcommand or `multiclaude workspace <name>`
@@ -2910,6 +3310,17 @@ func (c *CLI) addWorkspace(args []string) error {
 	wtPath := c.paths.AgentWorktree(repoName, workspaceName)
 	branchName := fmt.Sprintf("workspace/%s", workspaceName)
 
+	// Check if worktree path already exists (from previous incomplete workspace add)
+	if _, err := os.Stat(wtPath); err == nil {
+		fmt.Printf("Warning: Worktree path '%s' already exists\n", wtPath)
+		fmt.Printf("This may be from a previous incomplete workspace creation.\n")
+		fmt.Printf("Auto-repairing: removing existing worktree...\n")
+		if err := wt.Remove(wtPath, true); err != nil {
+			return fmt.Errorf("failed to clean up existing worktree: %w\nPlease manually remove it with: git worktree remove %s", err, wtPath)
+		}
+		fmt.Println("✓ Cleaned up stale worktree")
+	}
+
 	fmt.Printf("Creating worktree at: %s\n", wtPath)
 	if err := wt.CreateNewBranch(wtPath, branchName, startBranch); err != nil {
 		return errors.WorktreeCreationFailed(err)
@@ -2917,6 +3328,18 @@ func (c *CLI) addWorkspace(args []string) error {
 
 	// Get tmux session name
 	tmuxSession := sanitizeTmuxSessionName(repoName)
+
+	// Check if tmux window already exists (stale window from previous incomplete workspace add)
+	tmuxClient := tmux.NewClient()
+	if exists, err := tmuxClient.HasWindow(context.Background(), tmuxSession, workspaceName); err == nil && exists {
+		fmt.Printf("Warning: Tmux window '%s' already exists in session '%s'\n", workspaceName, tmuxSession)
+		fmt.Printf("This may be from a previous incomplete workspace creation.\n")
+		fmt.Printf("Auto-repairing: killing existing tmux window...\n")
+		if err := tmuxClient.KillWindow(context.Background(), tmuxSession, workspaceName); err != nil {
+			return fmt.Errorf("failed to clean up existing tmux window: %w\nPlease manually kill it with: tmux kill-window -t %s:%s", err, tmuxSession, workspaceName)
+		}
+		fmt.Println("✓ Cleaned up stale tmux window")
+	}
 
 	// Create tmux window for workspace (detached so it doesn't switch focus)
 	fmt.Printf("Creating tmux window: %s\n", workspaceName)
@@ -4877,6 +5300,34 @@ func (c *CLI) repair(args []string) error {
 	return nil
 }
 
+// refresh triggers an immediate worktree sync for all agents
+func (c *CLI) refresh(args []string) error {
+	// Connect to daemon
+	client := socket.NewClient(c.paths.DaemonSock)
+	_, err := client.Send(socket.Request{Command: "ping"})
+	if err != nil {
+		return errors.DaemonNotRunning()
+	}
+
+	fmt.Println("Triggering worktree refresh...")
+
+	resp, err := client.Send(socket.Request{
+		Command: "trigger_refresh",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to trigger refresh: %w", err)
+	}
+	if !resp.Success {
+		return fmt.Errorf("refresh failed: %s", resp.Error)
+	}
+
+	fmt.Println("✓ Worktree refresh triggered")
+	fmt.Println("  Agent worktrees will be synced with main branch in the background.")
+	fmt.Println("  Agents will receive a notification when their worktree is refreshed.")
+
+	return nil
+}
+
 // localRepair performs state repair without the daemon running
 func (c *CLI) localRepair(verbose bool) error {
 	// Load state from disk
@@ -5494,6 +5945,38 @@ func (c *CLI) bugReport(args []string) error {
 
 	// Print to stdout
 	fmt.Print(markdown)
+	return nil
+}
+
+// diagnostics generates system diagnostics in machine-readable format
+func (c *CLI) diagnostics(args []string) error {
+	flags, _ := ParseFlags(args)
+
+	// Create collector and generate report
+	collector := diagnostics.NewCollector(c.paths, Version)
+	report, err := collector.Collect()
+	if err != nil {
+		return fmt.Errorf("failed to collect diagnostics: %w", err)
+	}
+
+	// Always output as pretty JSON by default (unless --json=false for compact)
+	prettyJSON := flags["json"] != "false"
+	jsonOutput, err := report.ToJSON(prettyJSON)
+	if err != nil {
+		return fmt.Errorf("failed to format diagnostics as JSON: %w", err)
+	}
+
+	// Check if output file specified
+	if outputFile, ok := flags["output"]; ok {
+		if err := os.WriteFile(outputFile, []byte(jsonOutput), 0644); err != nil {
+			return fmt.Errorf("failed to write diagnostics to %s: %w", outputFile, err)
+		}
+		fmt.Printf("Diagnostics written to: %s\n", outputFile)
+		return nil
+	}
+
+	// Print to stdout
+	fmt.Println(jsonOutput)
 	return nil
 }
 
