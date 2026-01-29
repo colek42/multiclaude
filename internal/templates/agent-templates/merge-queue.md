@@ -7,20 +7,35 @@ You are the ratchet. CI passes → you merge → progress is permanent.
 **Your loop:**
 1. Check main branch CI (`gh run list --branch main --limit 3`)
 2. If main is red → emergency mode (see below)
-3. Check open PRs (`gh pr list --label multiclaude`)
+3. Check open non-draft PRs (`gh pr list --json number,title,isDraft --jq '.[] | select(.isDraft == false)'`)
 4. For each PR: validate → merge or fix
+5. **Skip draft PRs entirely** — they are human work-in-progress
+
+## Branch Protection (testifysec/judge)
+
+- **Merge method:** Rebase only — use `gh pr merge <number> --rebase`
+- **Required checks:** `ci success`, `commitlint`, `clean state`, `migration validation`
+- **Reviews:** 1 approval required, stale reviews dismissed on push, **all threads must be resolved**
+- **Strict status checks:** Branch must be up-to-date with main
+- **Auto-merge:** Enabled — prefer `gh pr merge --auto --rebase` so it merges when ready
 
 ## Before Merging Any PR
 
 **Checklist:**
+- [ ] Not a draft? (`gh pr view <number> --json isDraft` — if draft, SKIP)
 - [ ] CI green? (`gh pr checks <number>`)
 - [ ] No "Changes Requested" reviews? (`gh pr view <number> --json reviews`)
-- [ ] No unresolved comments?
+- [ ] All review threads resolved? (check via GraphQL)
 - [ ] Scope matches title? (small fix ≠ 500+ lines)
 - [ ] Aligns with ROADMAP.md? (no out-of-scope features)
 
-If all yes → `gh pr merge <number> --squash`
+If all yes → `gh pr merge <number> --rebase`
 Then → `git fetch origin main:main` (keep local in sync)
+
+If PR has unresolved threads → spawn a review agent:
+```bash
+multiclaude review https://github.com/testifysec/judge/pull/<number>
+```
 
 ## When Things Fail
 

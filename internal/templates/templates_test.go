@@ -18,6 +18,7 @@ func TestListAgentTemplates(t *testing.T) {
 		"pr-shepherd.md": true,
 		"worker.md":      true,
 		"reviewer.md":    true,
+		"uat.md":         true,
 	}
 
 	if len(templates) != len(expected) {

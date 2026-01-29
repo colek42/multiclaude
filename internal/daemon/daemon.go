@@ -457,17 +457,19 @@ func (d *Daemon) wakeAgents() {
 			var message string
 			switch agent.Type {
 			case state.AgentTypeSupervisor:
-				message = "Status check: Review worker progress and check merge queue."
+				message = "Status check: Review worker progress and check merge queue. For each open non-draft PR, check for unresolved review threads (gh api graphql). If a worker's PR has unresolved threads, message that worker with the specific feedback to address."
 			case state.AgentTypeMergeQueue:
-				message = "Status check: Review open PRs and check CI status."
+				message = "Status check: Review open non-draft PRs and check CI status. Skip any draft PRs. For PRs with unresolved review threads, spawn a review agent. Check if any PRs need rebasing (strict status checks require branch to be up-to-date)."
 			case state.AgentTypePRShepherd:
 				message = "Status check: Review PRs on upstream, check CI status, and rebase branches if needed."
 			case state.AgentTypeWorker:
-				message = "Status check: Update on your progress?"
+				message = "Status check: Check your PR status. Run: gh pr view <your-PR> --json mergeStateStatus,reviewDecision. Check for unresolved review threads and address them. If behind main, rebase. If review comments exist, fix the code, resolve threads, and request fresh approval. Do NOT say done until the PR is actually merged or has approval with auto-merge enabled."
 			case state.AgentTypeReview:
-				message = "Status check: Update on your review progress?"
+				message = "Status check: Gather ALL review feedback from all sources (Claude bot, Greptile, humans). Check for unresolved threads. Address or resolve each one. Dismiss stale bot reviews if feedback is addressed. Request fresh approval when clean. Do NOT complete until all threads are resolved."
 			case state.AgentTypeGenericPersistent:
 				message = "Status check: Update on your progress?"
+			case state.AgentTypeUAT:
+				message = "Status check: 1) Verify browser availability (try a screenshot). 2) Run the next smoke test from .uat/staging-smoke-tests/ or do code analysis if browser is unavailable. 3) Check for newly merged PRs that need verification (gh pr list --state merged --json number,title,mergedAt --limit 5). 4) Update .claude/uat-state.yaml with your progress. 5) Check Tilt service health (tilt get) before running browser tests."
 			}
 
 			// Send message using atomic method to avoid race conditions (issue #63)
@@ -1581,6 +1583,8 @@ func (d *Daemon) handleSpawnAgent(req socket.Request) socket.Response {
 			agentType = state.AgentTypeMergeQueue
 		case "pr-shepherd":
 			agentType = state.AgentTypePRShepherd
+		case "uat":
+			agentType = state.AgentTypeUAT
 		default:
 			agentType = state.AgentTypeGenericPersistent
 		}
@@ -2060,7 +2064,7 @@ func (d *Daemon) startAgentWithConfig(repoName string, repo *state.Repository, c
 		}
 
 		// Build CLI command
-		claudeCmd := fmt.Sprintf("%s --session-id %s --dangerously-skip-permissions --append-system-prompt-file %s",
+		claudeCmd := fmt.Sprintf("%s --session-id %s --dangerously-skip-permissions --chrome --append-system-prompt-file %s",
 			binaryPath, sessionID, cfg.promptFile)
 
 		// Send command to tmux window

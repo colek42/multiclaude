@@ -5870,7 +5870,7 @@ func (c *CLI) setupOutputCapture(tmuxSession, tmuxWindow, repoName, agentName, a
 // Returns the PID of the Claude process
 func (c *CLI) startClaudeInTmux(binaryPath, tmuxSession, tmuxWindow, workDir, sessionID, promptFile, repoName string, initialMessage string) (int, error) {
 	// Build Claude command - uses global ~/.claude/ for auth and slash commands are embedded in prompts
-	claudeCmd := fmt.Sprintf("%s --session-id %s --dangerously-skip-permissions", binaryPath, sessionID)
+	claudeCmd := fmt.Sprintf("%s --session-id %s --dangerously-skip-permissions --chrome", binaryPath, sessionID)
 
 	// Add prompt file if provided
 	if promptFile != "" {

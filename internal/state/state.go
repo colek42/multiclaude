@@ -20,6 +20,7 @@ const (
 	AgentTypeWorkspace         AgentType = "workspace"
 	AgentTypeReview            AgentType = "review"
 	AgentTypeGenericPersistent AgentType = "generic-persistent"
+	AgentTypeUAT               AgentType = "uat"
 )
 
 // IsPersistent returns true if this agent type represents a persistent agent
@@ -28,7 +29,7 @@ const (
 // (worker, review) are not auto-restarted.
 func (t AgentType) IsPersistent() bool {
 	switch t {
-	case AgentTypeSupervisor, AgentTypeMergeQueue, AgentTypePRShepherd, AgentTypeWorkspace, AgentTypeGenericPersistent:
+	case AgentTypeSupervisor, AgentTypeMergeQueue, AgentTypePRShepherd, AgentTypeWorkspace, AgentTypeGenericPersistent, AgentTypeUAT:
 		return true
 	default:
 		return false
